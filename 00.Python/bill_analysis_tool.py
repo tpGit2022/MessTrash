@@ -1,38 +1,27 @@
 #! /usr/bin/python3
 # _*_ coding:UTF-8 _*_
+"""
+随手记电子账单导入工具
+"""
 import os.path
 import sqlite3
 import zipfile
 import csv
 import time
-from ssj_decide_category import decide_category
-from ssj_decide_category import new_unique_id
-import ssj_decide_category
-from ssj_decide_category import TradeType
-from enum import Enum
 import shutil
-from pathlib import Path
+import copy
+import datetime
+import global_constant
+from global_constant import tp_path
+from global_constant import new_unique_id
+from global_constant import ConvertType
+from global_constant import TradeType
+from global_constant import standard_format_data_key
+from ssj_decide_category import decide_category
+# from online_bill_convert import convert_all_online_bill_data_to_standard
+from online_bill_convert_without_pdf_lib import convert_all_online_bill_data_to_standard
 
-
-class ConvertType(int, Enum):
-    Exchanged = 0
-    KbfToSqlite = 1
-    SqliteToKbf = 2
-
-
-target_file = ''
-# ot_file_name = '流水核验_20220929163911_u_nquxyn1_60767968717.kbf'
-ot_file_name = None
-step_chain_dict = {
-    'unzip_kbf_file': 1,
-    'convert_from_kbf_to_sqlite': 1,
-    'write_data_to_sqlite': 1,
-    'compress_all_file_to_kbf': 1,
-    'clear_ssj_all_data': 0,
-    'clear_ssj_backup_data': 0
-}
-tp_file = os.path.abspath(__file__)
-tp_path = Path(tp_file)
+tp_kbf_file_name = ''
 data_transaction_model_keys = ["transactionPOID", "createdTime", "modifiedTime", "tradeTime", "memo", "type",
                                "creatorTradingEntityPOID", "modifierTradingEntityPOID", "buyerAccountPOID",
                                "buyerCategoryPOID",
@@ -43,22 +32,39 @@ data_transaction_model_keys = ["transactionPOID", "createdTime", "modifiedTime",
 data_account_model_keys = ["accountPOID", "name", "tradingEntityPOID", "accountGroupPOID"]
 data_category_model_keys = ["categoryPOID", "name", "parentCategoryPOID", "path", "depth", "userTradingEntityPOID",
                             "type", "clientID"]
-standard_format_data_key = ["交易号", "商家订单号", "交易创建时间", "付款时间", "最近修改时间", "交易对方", "商品名称", "金额", "收/支", "交易状态", "交易方式", "服务费", "备注", "资金状态", "数据来源"]
 
 
 def unzip_kbf(input_files=None):
+    global tp_kbf_file_name
     if input_files is None:
-        input_files = os.path.join(tp_path.parent.parent, 'f_input/')
-    if not os.path.exists(input_files):
-        print(f'{input_files}不存在')
-    files = os.listdir(input_files)
-    for f in files:
-        if f.endswith('.kbf'):
-            global target_file
-            target_file = f
-            zf = zipfile.ZipFile(os.path.join(input_files, f))
-            zf.extractall(path=input_files)
-            break
+        if global_constant.full_update or global_constant.sdcard_root_path is None:
+            input_file_abs_path = os.path.join(tp_path.parent.parent, 'f_input/')
+        else:
+            input_file_abs_path = os.path.join(global_constant.sdcard_root_path, '.mymoney', 'backup/')
+    else:
+        if global_constant.full_update or global_constant.sdcard_root_path is None:
+            input_file_abs_path = os.path.join(tp_path.parent.parent, 'f_input/', input_files)
+        else:
+            input_file_abs_path = os.path.join(global_constant.sdcard_root_path, '.mymoney', 'backup/', input_files)
+    if not os.path.exists(input_file_abs_path):
+        print(f'{input_file_abs_path}不存在')
+        raise FileNotFoundError(f'输入文件kbf不存在-->{input_file_abs_path}')
+    print(f'输入待解压kbf文件路径:{input_file_abs_path}')
+    if os.path.isdir(input_file_abs_path):
+        files = os.listdir(input_file_abs_path)
+        for f in files:
+            if f.endswith('.kbf'):
+                global tp_kbf_file_name
+                tp_kbf_file_name = f
+                zf = zipfile.ZipFile(os.path.join(input_file_abs_path, f))
+                zf.extractall(path=os.path.join(tp_path.parent.parent, 'f_input/'))
+                break
+    elif os.path.isfile(input_file_abs_path):
+        if input_files.lower().endswith('.kbf'):
+            tp_kbf_file_name = input_files
+            zf = zipfile.ZipFile(input_file_abs_path)
+            zf.extractall(path=os.path.join(tp_path.parent.parent, 'f_input/'))
+        pass
 
 
 def get_config_in_database(sqlite3_path=None):
@@ -67,8 +73,8 @@ def get_config_in_database(sqlite3_path=None):
         return
     if sqlite3_path is None:
         sqlite3_path = os.path.join(tp_path.parent.parent, 'f_output/mymoney.sqlite')
-
-    print(f"数据库路径:{sqlite3_path}")
+    if global_constant.print_repeat_data_info:
+        print(f"数据库路径:{sqlite3_path}")
 
     conn = sqlite3.connect(sqlite3_path)
     cur = conn.cursor()
@@ -84,9 +90,9 @@ def get_config_in_database(sqlite3_path=None):
     for row in ret:
         category_info_dict[row[1]] = row[0]
 
-    print(account_info_dict)
-    print()
-    print(category_info_dict)
+    # print(account_info_dict)
+    # print()
+    # print(category_info_dict)
     query_ret = """select transactionPOID from t_transaction ORDER By t_transaction.transactionPOID DESC limit 1 ;"""
     ret = cur.execute(query_ret)
     t = ret.fetchone()
@@ -94,167 +100,37 @@ def get_config_in_database(sqlite3_path=None):
         last_transaction_poid = t[0]
         if last_transaction_poid < 0:
             last_transaction_poid = -last_transaction_poid
-        ssj_decide_category.unique_id = last_transaction_poid + 1
-        print(f'修正初始unique_id为{ssj_decide_category.unique_id}')
+        global_constant.unique_id = last_transaction_poid + 1
+        print(f'修正初始unique_id为{global_constant.unique_id}')
     cur.close()
     conn.close()
     return account_info_dict, category_info_dict
 
 
-def convert_alipay_bill_to_standard_data_format():
-    input_dir = os.path.join(tp_path.parent.parent, 'f_input/')
-    files = os.listdir(input_dir)
-    standard_data_list = []
-    for f in files:
-        if f.startswith("alipay_record") and f.endswith(".csv"):
-            with open(f'{input_dir}{f}', 'r', encoding='GBK') as rf:
-                reader = csv.reader(rf)
-                data_header = []
-                data_read_flag = False
-                for row in reader:
-                    if row[0].strip().__eq__('交易号'):
-                        data_read_flag = True
-                        data_header = row
-                        continue
-                    if data_read_flag:
-                        if len(row) < 5:
-                            continue
-                        standard_data = dict.fromkeys(standard_format_data_key)
-                        column_index = 0
-                        while column_index < max(len(data_header), len(standard_format_data_key)):
-                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t', '').strip()
-                            column_index = column_index + 1
-                        standard_data['金额'] = standard_data['金额（元）']
-                        standard_data['服务费'] = standard_data['服务费（元）']
-                        standard_data.pop('金额（元）')
-                        standard_data.pop('服务费（元）')
-                        standard_data.pop('交易来源地')
-                        standard_data.pop('类型')
-                        standard_data.pop('成功退款（元）')
-                        standard_data['交易方式'] = '支付宝'
-                        if standard_data['资金状态'] is None:
-                            standard_data['资金状态'] = ' '
-                        if standard_data['备注'] is None:
-                            standard_data['备注'] = ' '
-                        standard_data['备注'] = f'{standard_data["备注"]}\n数据来源:支付宝'
-                        standard_data['数据来源'] = 'from_alipay_bill'
-                        standard_data_list.append(standard_data)
-    print(f'支付宝待插入数据{len(standard_data_list)}条')
-    return standard_data_list
-
-
-def convert_weixin_bill_to_standard_data_format():
-    input_dir = os.path.join(tp_path.parent.parent, 'f_input/')
-    standard_weixin_bill_csv = os.path.join(tp_path.parent.parent, 'f_input/standard_bill_from_weixin.csv')
-    files = os.listdir(input_dir)
-    standard_data_list = []
-    for f in files:
-        if f.startswith("微信支付账单") and f.endswith(".csv"):
-            with open(f'{input_dir}{f}', 'r', encoding="UTF-8") as rf:
-                reader = csv.reader(rf)
-                data_header = []
-                data_read_flag = False
-                for row in reader:
-                    if row[0].strip().__eq__('交易时间'):
-                        data_read_flag = True
-                        data_header = row
-                        continue
-                    if data_read_flag:
-                        if len(row) < 5:
-                            continue
-                        standard_data = dict.fromkeys(standard_format_data_key)
-                        column_index = 0
-                        while column_index < min(len(data_header), len(standard_format_data_key)):
-                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t', '').strip()
-                            column_index = column_index + 1
-                        standard_data['金额'] = standard_data['金额(元)'].replace('¥', '')
-                        standard_data['交易创建时间'] = standard_data['交易时间']
-                        standard_data['付款时间'] = standard_data['交易时间']
-                        standard_data['最近修改时间'] = standard_data['交易时间']
-                        standard_data['商品名称'] = standard_data['商品']
-                        standard_data['交易号'] = standard_data['交易单号']
-                        standard_data['商家订单号'] = standard_data['商户单号']
-                        standard_data['交易状态'] = '交易成功'
-                        standard_data['服务费'] = '0'
-
-                        pay_channel = standard_data['支付方式']
-                        if pay_channel.__contains__('银行'):
-                            standard_data['交易方式'] = '银行卡'
-                        else:
-                            standard_data['交易方式'] = '微信钱包'
-
-                        if standard_data['资金状态'] is None:
-                            standard_data['资金状态'] = ' '
-                        if standard_data['备注'] is None:
-                            standard_data['备注'] = ' '
-                        standard_data['备注'] = standard_data['备注'].replace('/', '')
-                        standard_data['备注'] = f'{standard_data["备注"]}{standard_data["当前状态"]}数据来源:微信短账单'
-                        standard_data['数据来源'] = 'from_weixin_bill'
-                        standard_data.pop('交易时间')
-                        standard_data.pop('商品')
-                        standard_data.pop('金额(元)')
-                        standard_data.pop('交易类型')
-                        standard_data.pop('交易单号')
-                        standard_data.pop('商户单号')
-                        standard_data.pop('支付方式')
-                        standard_data.pop('当前状态')
-                        standard_data_list.append(standard_data)
-
-    if not os.path.exists(standard_weixin_bill_csv):
-        csv_file = open(standard_weixin_bill_csv, mode='w+', encoding='UTF-8', newline='')
-        csv_write = csv.writer(csv_file)
-        csv_write.writerow(standard_format_data_key)
-    else:
-        csv_file = open(standard_weixin_bill_csv, mode='a+', encoding='UTF-8', newline='')
-        csv_write = csv.writer(csv_file)
-    for data in standard_data_list:
-        w_data = list(data.values())
-        w_data[0] = w_data[0] + '\t'
-        w_data[1] = w_data[1] + '\t'
-        csv_write.writerow(w_data)
-    csv_file.close()
-    print(f'微信待插入数据{len(standard_data_list)}条')
-    # print(standard_data_list)
-    return standard_data_list
-
-
-def convert_weixin_long_bill_to_standard_data_format():
-    input_dir = os.path.join(tp_path.parent.parent, 'f_input/')
-    files = os.listdir(input_dir)
-    standard_data_list = []
-    for f in files:
-        if f.startswith("standard_bill_from_weixin") and f.endswith(".csv"):
-            with open(f'{input_dir}{f}', 'r', encoding='UTF-8') as rf:
-                reader = csv.reader(rf)
-                data_header = []
-                is_first = True
-                for row in reader:
-                    if is_first:
-                        data_header = row
-                        is_first = False
-                        continue
-                    standard_data = dict.fromkeys(standard_format_data_key)
-                    column_index = 0
-                    while column_index < len(data_header):
-                        standard_data[data_header[column_index]] = row[column_index].replace('\t', '')
-                        column_index = column_index + 1
-                    if standard_data['备注'] is None:
-                        standard_data['备注'] = ' '
-                    standard_data['备注'] = f'{standard_data["备注"]}\n数据来源:微信支付'
-                    if standard_data['交易方式'] is not None:
-                        if standard_data['交易方式'].strip().__contains__('零钱'):
-                            standard_data['交易方式'] = '微信钱包'
-                        elif standard_data['交易方式'].strip().__contains__('银行'):
-                            standard_data['交易方式'] = '银行卡'
-                        elif standard_data['交易方式'].strip().__eq__('/'):
-                            standard_data['交易方式'] = '微信钱包'
-                    else:
-                        standard_data['交易方式'] = '微信钱包'
-                    standard_data['数据来源'] = 'from_weixin_bill'
-                    standard_data_list.append(standard_data)
-    print(f'微信待插入数据{len(standard_data_list)}条')
-    return standard_data_list
-    pass
+def read_standard_bill_data_from_file():
+    standard_bill_data_list = []
+    all_standard_bill_data_file = os.path.join(tp_path.parent.parent, 'f_input', global_constant.all_online_data_to_import_file_name)
+    if not os.path.exists(all_standard_bill_data_file):
+        print(f'文件{all_standard_bill_data_file}不存在!!!')
+        return
+    with open(all_standard_bill_data_file, mode='r', encoding='UTF-8'):
+        with open(all_standard_bill_data_file, encoding='UTF-8', mode='r') as f:
+            reader = csv.reader(f)
+            data_header = []
+            is_first = True
+            for row in reader:
+                if is_first:
+                    data_header = row
+                    is_first = False
+                    continue
+                standard_data = dict.fromkeys(standard_format_data_key)
+                column_index = 0
+                while column_index < len(data_header):
+                    standard_data[data_header[column_index]] = row[column_index].replace('\t', '')
+                    column_index = column_index + 1
+                standard_bill_data_list.append(standard_data)
+        pass
+    return standard_bill_data_list
 
 
 def standard_bill_file_analysis_tool(account_info_dict, category_info_dict, standard_format_data_list):
@@ -284,14 +160,16 @@ def standard_bill_file_analysis_tool(account_info_dict, category_info_dict, stan
         time_format = '%Y-%m-%d %H:%M:%S'
         ssj_data_model = dict.fromkeys(data_transaction_model_keys)
         ssj_data_model['transactionPOID'] = new_unique_id()
-        if standard_data['交易创建时间'] is None or len(standard_data['交易创建时间']) == 0 or len(standard_data['交易创建时间'].strip()) == 0:
+        if standard_data['交易创建时间'] is None or len(standard_data['交易创建时间']) == 0 or len(
+                standard_data['交易创建时间'].strip()) == 0:
             ssj_data_model['createdTime'] = standard_data['交易创建时间']
         else:
             time_array = time.strptime(standard_data['交易创建时间'].strip(), time_format)
             timestamp = int(time.mktime(time_array)) * 1000
             ssj_data_model['createdTime'] = timestamp
-        
-        if standard_data['最近修改时间'] is None or len(standard_data['最近修改时间']) == 0 or len(standard_data['最近修改时间'].strip()) == 0:
+
+        if standard_data['最近修改时间'] is None or len(standard_data['最近修改时间']) == 0 or len(
+                standard_data['最近修改时间'].strip()) == 0:
             ssj_data_model['modifiedTime'] = standard_data['最近修改时间']
         else:
             time_array = time.strptime(standard_data['最近修改时间'].strip(), time_format)
@@ -305,8 +183,9 @@ def standard_bill_file_analysis_tool(account_info_dict, category_info_dict, stan
             timestamp = int(time.mktime(time_array)) * 1000
             ssj_data_model['tradeTime'] = timestamp
 
-        ssj_data_model['memo'] = f"交易对方:{standard_data['交易对方']}\n商品名称:{standard_data['商品名称']}\n收/支:{standard_data['收/支']}\n交易状态:{standard_data['交易状态']}\n" \
-                                 f"手续费:{standard_data['服务费']}\n交易方式:{standard_data['交易方式']}\n资金状态:{standard_data['资金状态']}\n交易时间:{standard_data['交易创建时间']}\n交易号:{standard_data['交易号']}\n商家订单号:{standard_data['商家订单号']}\n备注:{standard_data['备注']}"
+        ssj_data_model[
+            'memo'] = f"交易对方:{standard_data['交易对方']}\n商品名称:{standard_data['商品名称']}\n收/支:{standard_data['收/支']}\n交易状态:{standard_data['交易状态']}\n" \
+                      f"交易方式:{standard_data['交易方式']}\n资金状态:{standard_data['资金状态']}\n交易时间:{standard_data['交易创建时间']}\n交易号:{standard_data['交易号']}\n商家订单号:{standard_data['商家订单号']}\n备注:{standard_data['备注']}"
         ssj_data_model['type'] = 0
         ssj_data_model['creatorTradingEntityPOID'] = -3
         ssj_data_model['modifierTradingEntityPOID'] = -3
@@ -333,16 +212,19 @@ def standard_bill_file_analysis_tool(account_info_dict, category_info_dict, stan
             continue
 
         if standard_data['收/支'].__eq__('收入'):
-            need_jump = decide_category(ssj_data_model, account_info_dict, category_info_dict, standard_data, ssj_data_list)
+            need_jump = decide_category(ssj_data_model, account_info_dict, category_info_dict, standard_data,
+                                        ssj_data_list)
             ssj_data_model['type'] = TradeType.Income.value
             ssj_data_model['buyerAccountPOID'] = 0
             ssj_data_model['sellerAccountPOID'] = account_info_dict[f"{standard_data['交易方式']}"]
             ssj_data_model['sellerCategoryPOID'] = 0
-            if ssj_data_model['buyerCategoryPOID'] is None or (isinstance(ssj_data_model['buyerCategoryPOID'], int) and ssj_data_model['buyerCategoryPOID'] == 0):
+            if ssj_data_model['buyerCategoryPOID'] is None or (
+                    isinstance(ssj_data_model['buyerCategoryPOID'], int) and ssj_data_model['buyerCategoryPOID'] == 0):
                 ssj_data_model['buyerCategoryPOID'] = category_info_dict['未分类收入']
                 ssj_data_model['memo'] = f"{ssj_data_model['memo']}\n纳入未分类收入"
         elif standard_data['收/支'].__eq__('支出'):
-            need_jump = decide_category(ssj_data_model, account_info_dict, category_info_dict, standard_data, ssj_data_list)
+            need_jump = decide_category(ssj_data_model, account_info_dict, category_info_dict, standard_data,
+                                        ssj_data_list)
             ssj_data_model['type'] = TradeType.Expense.value
             ssj_data_model['buyerAccountPOID'] = account_info_dict[f"{standard_data['交易方式']}"]
             ssj_data_model['buyerCategoryPOID'] = 0
@@ -351,7 +233,8 @@ def standard_bill_file_analysis_tool(account_info_dict, category_info_dict, stan
                 ssj_data_model['sellerCategoryPOID'] = category_info_dict['其他支出']
                 ssj_data_model['memo'] = f"{ssj_data_model['memo']}\n纳入未分类支出"
         else:
-            need_jump = decide_category(ssj_data_model, account_info_dict, category_info_dict, standard_data, ssj_data_list)
+            need_jump = decide_category(ssj_data_model, account_info_dict, category_info_dict, standard_data,
+                                        ssj_data_list)
         if not need_jump:
             ssj_data_list.append(ssj_data_model)
     if repeat_record_count > 0:
@@ -380,7 +263,8 @@ def ssj_kbf_sqlite_convert(input_file=None, output_file=None, convert=ConvertTyp
                   0x0, 0x0, 0x0, 0x0,
                   0x0, 0x0, 0x0, 0x0,
                   0x0, 0x46, 0xFF, 0x0)
-    read_file_header(input_file)
+    if global_constant.print_repeat_data_info:
+        read_file_header(input_file)
     if os.path.exists(output_file):
         os.remove(output_file)
     with open(input_file, mode='rb') as f:
@@ -408,7 +292,8 @@ def ssj_kbf_sqlite_convert(input_file=None, output_file=None, convert=ConvertTyp
                 index = index + 1
             fw.write(write_buffer)
             pass
-    read_file_header(output_file)
+    if global_constant.print_repeat_data_info:
+        read_file_header(output_file)
     pass
 
 
@@ -450,14 +335,12 @@ def adb_helper_clear_ssj_data(operation):
     if operation == 1:
         # pull file
         os.system(r"adb shell ls -al /sdcard/.mymoney/backup/")
-        os.system(r"adb pull /sdcard/.mymoney/backup/ C:/Users/Walkers/Desktop/ApkData/com.mymoney/")
         return
         pass
     if operation == 2:
         # push file
         os.system(r"adb shell rm -rf /sdcard/.mymoney/backup/")
         os.system(r"adb shell mkdir /sdcard/.mymoney/backup/")
-        # os.system(r"adb push C:/Users/Walkers/Desktop/ApkData/默认账本_20220902091252.kbf /sdcard/.mymoney/backup/")
         pass
     if operation == 3:
         os.system(r"adb shell su -c ls -al /data/data/com.mymoney/databases/")
@@ -469,12 +352,14 @@ def adb_helper_clear_ssj_data(operation):
 
 
 def update_database_table_struct(sqlite3_path=None):
+    print('更新数据库字段等信息.....')
     if sqlite3_path is not None and not os.path.exists(sqlite3_path):
         print(f"数据库文件不存在:{sqlite3_path}")
         return
     if sqlite3_path is None:
         sqlite3_path = os.path.join(tp_path.parent.parent, 'f_output/mymoney.sqlite')
-    print(f"数据库路径:{sqlite3_path}")
+    if global_constant.print_repeat_data_info:
+        print(f"数据库路径:{sqlite3_path}")
     conn = sqlite3.connect(sqlite3_path)
     cur = conn.cursor()
 
@@ -484,7 +369,8 @@ def update_database_table_struct(sqlite3_path=None):
         query_ret = f"select * from sqlite_master where name='t_transaction' and sql like '%{field_data}%';"
         ret = cur.execute(query_ret)
         if len(list(ret)) == 0:
-            print(f"更新表 t_transaction 结构，新增字段 --> {field_data}")
+            if global_constant.print_repeat_data_info:
+                print(f"更新表 t_transaction 结构，新增字段 --> {field_data}")
             alter_table_add_trade_number_sql = f"alter table 't_transaction' add {field_data} TEXT;"
             cur.execute(alter_table_add_trade_number_sql)
 
@@ -499,13 +385,16 @@ def update_database_table_struct(sqlite3_path=None):
     insert_account_sql = """INSERT INTO "t_account" ("accountPOID", "name", "tradingEntityPOID", "lastUpdateTime", "usedCount", "accountGroupPOID", "balance", "currencyType", "memo", "amountOfLiability", "amountOfCredit", "ordered", "hidden", "parent", "clientID", "uuid", "iconName", "countedOutAssets") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"""
     insert_account_data = []
 
-    account_need_insert_tuple = ('花呗', '借呗', '招商金融', '度小满金融', '京东白条', '京东金条', '苏宁金融', '微粒贷', '微信钱包')
+    account_need_insert_tuple = ('花呗', '借呗', '招商金融', '度小满金融', '京东金融', '苏宁金融', '微粒贷', '微信钱包', '未知账户')
     for account_name in account_need_insert_tuple:
-        query_ret = """select * from t_account WHERE name == '花呗'"""
+        query_ret = f"select * from t_account WHERE name == '{account_name}'"
         ret = cur.execute(query_ret)
         if len(list(ret)) == 0:
-            print(f"表 t_account 数据，需新增账户 --> {account_name}")
-            account_tuple_tp = (-account_id_seed, account_name, '-3', '1663640017823', '0', '9', '0', 'CNY', '', '0', '0', '0', '0', '0', -account_id_seed, '', 'zhang_hu_xuni', '0')
+            if global_constant.print_repeat_data_info:
+                print(f"表 t_account 数据，需新增账户 --> {account_name}")
+            account_tuple_tp = (
+            -account_id_seed, account_name, '-3', '1663640017823', '0', '9', '0', 'CNY', '', '0', '0', '0', '0', '0',
+            -account_id_seed, '', 'zhang_hu_xuni', '0')
             account_id_seed = account_id_seed + 1
             insert_account_data.append(account_tuple_tp)
     cur.executemany(insert_account_sql, insert_account_data)
@@ -513,7 +402,8 @@ def update_database_table_struct(sqlite3_path=None):
     query_ret = """select accountPOID,name from t_account;"""
     ret = cur.execute(query_ret)
     for row in ret:
-        print(row)
+        if global_constant.print_repeat_data_info:
+            print(row)
 
     update_id_seed_sql = f"UPDATE t_id_seed set idSeed = {account_id_seed} WHERE tableName == 't_account'"
     cur.execute(update_id_seed_sql)
@@ -521,7 +411,8 @@ def update_database_table_struct(sqlite3_path=None):
     query_ret = """select * from t_id_seed WHERE t_id_seed.tableName == 't_account'"""
     ret = cur.execute(query_ret)
     id_seed_tuple = ret.fetchone()
-    print(id_seed_tuple)
+    if global_constant.print_repeat_data_info:
+        print(id_seed_tuple)
     # 新增支出分类 休闲娱乐-福彩，休闲娱乐-体彩，食品酒水-食材，金融保险-保险费
     query_ret = """SELECT categoryPOID,name,parentCategoryPOID,path from t_category where depth == '1';"""
     ret = cur.execute(query_ret)
@@ -540,7 +431,8 @@ def update_database_table_struct(sqlite3_path=None):
     insert_category_data = []
 
     # 0 支出 1 收入
-    category_need_insert_data_dict = {'福彩': ('0', '休闲娱乐'), '体彩': ('0', '休闲娱乐'), '食材': ('0', '食品酒水'), '保险费': ('0', '金融保险'),
+    category_need_insert_data_dict = {'福彩': ('0', '休闲娱乐'), '体彩': ('0', '休闲娱乐'), '食材': ('0', '食品酒水'),
+                                      '保险费': ('0', '金融保险'),
                                       '未分类支出': ('0', '其他杂项'), '贷款借入': ('1', '其他收入'), '未分类收入': ('1', '其他收入')}
     for item in category_need_insert_data_dict.items():
         key = item[0]
@@ -548,9 +440,13 @@ def update_database_table_struct(sqlite3_path=None):
         query_ret = f"select * from t_category where  t_category.name == '{key}'"
         ret = cur.execute(query_ret)
         if len(list(ret)) == 0:
-            print(f"表 t_category 数据，需新增类型 --> {key}")
+            if global_constant.print_repeat_data_info:
+                print(f"表 t_category 数据，需新增类型 --> {key}")
             category_key = value[1]
-            category_tuple_tp = (-category_id_seed, key, category_first_level_dict[f'{category_key}'][0], f"{category_first_level_dict[f'{category_key}'][3]}{-category_id_seed}/", '2', '1663639743742', '-3', 'defaultIcon', '0', value[0], '0', -category_id_seed, 'icon_qtzx', '0')
+            category_tuple_tp = (-category_id_seed, key, category_first_level_dict[f'{category_key}'][0],
+                                 f"{category_first_level_dict[f'{category_key}'][3]}{-category_id_seed}/", '2',
+                                 '1663639743742', '-3', 'defaultIcon', '0', value[0], '0', -category_id_seed,
+                                 'icon_qtzx', '0')
             category_id_seed = category_id_seed + 1
             insert_category_data.append(category_tuple_tp)
 
@@ -564,6 +460,46 @@ def update_database_table_struct(sqlite3_path=None):
     pass
 
 
+def check_data_legality(input_data_list: list):
+    """
+    检测将导入数据是否合法，主要检测两点
+    1. type=0即支出类型时, buyerAccountPOID 或者 sellerCategoryPOID 等于0为非法数据
+    2. type=1即收入类型时 sellerAccountPOID 或者 buyerCategoryPOID 等于0为非法数据
+    3. 转账类型type=2和type=3应当成对出现
+    4. 同一条转账记录relation应当一致 FSourceKey不一致
+    :return:
+    """
+    copy_list = copy.copy(input_data_list)
+    for i in range(len(copy_list) - 1, -1, -1):
+        if copy_list[i]['type'] == 0 and (copy_list[i]['buyerAccountPOID'] == 0 or copy_list[i]['sellerCategoryPOID'] == 0):
+            print(f'支出数据非法:{copy_list[i]}')
+            return False
+        if copy_list[i]['type'] == 1 and (copy_list[i]['sellerAccountPOID'] == 0 or copy_list[i]['buyerCategoryPOID'] == 0):
+            print(f'收入数据非法:{copy_list[i]}')
+            return False
+        if copy_list[i]['type'] == 2 or copy_list[i]['type'] == 3:
+            continue
+        copy_list.pop(i)
+    copy_list.sort(key=lambda cmp_data: int(cmp_data['createdTime']))
+    order_index = (-2, -1, 0, 1, 2)
+    for i in range(0, len(copy_list) - 1, 2):
+        if copy_list[i]['createdTime'] != copy_list[i + 1]['createdTime']:
+            # 抛出上两个和下两个
+            print('转账数据异常，将打印异常数据上下两条...')
+            for j in order_index:
+                if 0 <= i + j < len(copy_list):
+                    print(f'索引{j}:{i + j}-->{copy_list[i + j]}')
+            return False
+        if copy_list[i]['relation'] != copy_list[i + 1]['relation']:
+            print('转账数据异常relation不一致，将打印异常数据上下两条...')
+            for j in order_index:
+                if 0 <= i + j < len(copy_list):
+                    print(f'索引{j}:{i + j}-->{copy_list[i + j]}')
+            return False
+    return True
+    pass
+
+
 def write_ssj_data_to_database(sqlite3_path=None, ssj_data_set=None):
     if sqlite3_path is not None and not os.path.exists(sqlite3_path):
         print(f"数据库文件不存在:{sqlite3_path}")
@@ -571,7 +507,8 @@ def write_ssj_data_to_database(sqlite3_path=None, ssj_data_set=None):
     if sqlite3_path is None:
         sqlite3_path = os.path.join(tp_path.parent.parent, 'f_output/mymoney.sqlite')
 
-    print(f"数据库路径:{sqlite3_path}")
+    if global_constant.print_repeat_data_info:
+        print(f"数据库路径:{sqlite3_path}")
     conn = sqlite3.connect(sqlite3_path)
     cur = conn.cursor()
     ret = cur.execute('select count(*) FROM t_transaction;')
@@ -673,7 +610,8 @@ def compress_file_to_kbf(input_dir=None, output_file=None):
             data_byte = f.read()
             wf.write(data_byte)
             wf.flush()
-    ssj_kbf_sqlite_convert(input_file=f"{input_dir}mymoney.sqlite", output_file=f"{output_dir}/mymoney.sqlite", convert=ConvertType.SqliteToKbf)
+    ssj_kbf_sqlite_convert(input_file=f"{input_dir}mymoney.sqlite", output_file=f"{output_dir}/mymoney.sqlite",
+                           convert=ConvertType.SqliteToKbf)
     out_zip = zipfile.ZipFile(output_file, 'w')
     for f in os.listdir(output_dir):
         if f == 'backup_info' or f == 'mymoney.sqlite':
@@ -683,58 +621,84 @@ def compress_file_to_kbf(input_dir=None, output_file=None):
     pass
 
 
-def convert_sw_salary_to_standard_format():
-    input_dir = os.path.join(tp_path.parent.parent, 'f_input/')
-    files = os.listdir(input_dir)
-    standard_data_list = []
-    for f in files:
-        if f.__eq__('sw_salary_person_all.csv'):
-            with open(f'{input_dir}{f}', 'r', encoding='UTF-8') as rf:
-                reader = csv.reader(rf)
-                data_header = []
-                data_read_flag = False
-                for row in reader:
-                    if row[0].__eq__('交易号'):
-                        data_header = row
-                        data_read_flag = True
-                        continue
-                    if data_read_flag:
-                        standard_data = dict.fromkeys(standard_format_data_key)
-                        column_index = 0
-                        while column_index < min(len(data_header), len(standard_format_data_key)):
-                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t', '').strip()
-                            column_index = column_index + 1
-                        standard_data_list.append(standard_data)
-    print(f'sw待插入数据{len(standard_data_list)}条')
-    return standard_data_list
+def update_input_config_if_android_devices():
+    """
+    如果当前设备为 Android 设备则更新输入配置
+    当未指定输入的文件名或者指定的文件名不存在
+    处于实际情况考虑重设input_file只考虑包含当前日期的kbf文件
+    :return:
+    """
+    if global_constant.sdcard_root_path is None:
+        return
+    print('当前为Android设备，更新输入配置中....')
+    if global_constant.input_kbf_file_name is not None and len(global_constant.input_kbf_file_name.strip()) > 0:
+        kbf_abs_path = os.path.join(global_constant.sdcard_root_path, '.mymoney', 'backup', global_constant.input_kbf_file_name)
+        if not os.path.exists(kbf_abs_path):
+            raise FileNotFoundError(f'指定的kbf文件不存在!!!-->{kbf_abs_path}')
+    else:
+        print('未指定有效kbf文件名,搜索有效kbf中...')
+        now_time = datetime.datetime.now()
+        now_time_str = datetime.datetime.strftime(now_time, '%Y%m%d')
+        kbf_abs_dir = os.path.join(global_constant.sdcard_root_path, '.mymoney', 'backup')
+        if not os.path.exists(kbf_abs_dir):
+            raise FileNotFoundError(f'随手记数据备份目录不存在!!!-->{kbf_abs_dir}')
+        kbf_files = os.listdir(kbf_abs_dir)
+        flag_valid_file = False
+        for k in kbf_files:
+            # print(f'随手记kbf-->{os.path.join(kbf_abs_dir, k)}')
+            if k.__contains__(now_time_str) and (k.__contains__('默认账本') or k.__contains__('流水核验')):
+                flag_valid_file = True
+                global_constant.input_kbf_file_name = k
+                print(f'重设输入kbf文件为-->{global_constant.input_kbf_file_name}')
+            elif k.__contains__(now_time_str):
+                print(f'移除冗余备份文件-->{os.path.join(kbf_abs_dir, k)}')
+                os.remove(os.path.join(kbf_abs_dir, k))
+        if not flag_valid_file:
+            raise FileNotFoundError('未找到符合要求的kbf文件')
+    pass
+
+
+def copy_kbf_to_ssj_backup_dir_after_convert():
+    if global_constant.sdcard_root_path is None:
+        return
+    print('当前为Android设备,拷贝转化后的kbf文件至随手记的数据备份目录....')
+    source_kbf_file = os.path.join(tp_path.parent.parent, 'f_output', global_constant.output_kbf_file_name)
+    des_kbf_dir = os.path.join(global_constant.sdcard_root_path, '.mymoney', 'backup', global_constant.output_kbf_file_name)
+    print(f'源文件:{source_kbf_file}')
+    print(f'目标文件:{des_kbf_dir}')
+    shutil.copyfile(source_kbf_file, des_kbf_dir)
 
 
 if __name__ == '__main__':
     out_dirs = os.path.join(tp_path.parent.parent, 'f_output')
+    update_input_config_if_android_devices()
     if not os.path.exists(out_dirs):
-        os.mkdir(out_dirs)
-    step = list(step_chain_dict.values())
-    if step[0] == 1:
-        unzip_kbf()
-    if step[1] == 1:
+        os.makedirs(out_dirs)
+    if global_constant.step_chain_dict['unzip_kbf_file'] == 1:
+        unzip_kbf(global_constant.input_kbf_file_name)
+    if global_constant.step_chain_dict['convert_from_kbf_to_sqlite'] == 1:
         ssj_kbf_sqlite_convert(convert=ConvertType.KbfToSqlite)
-    if step[2] == 1:
+    if global_constant.step_chain_dict['convert_bill_file']:
+        convert_all_online_bill_data_to_standard()
+    if global_constant.step_chain_dict['update_db_config']:
         update_database_table_struct()
         account_dict, category_dict = get_config_in_database()
-        convert_weixin_bill_to_standard_data_format()
-        weixin_long_parse_data_list = convert_weixin_long_bill_to_standard_data_format()
-        alipay_data_list = convert_alipay_bill_to_standard_data_format()
-        sw_data_list = convert_sw_salary_to_standard_format()
-        data_list = weixin_long_parse_data_list + alipay_data_list + sw_data_list
+
+    if global_constant.step_chain_dict['load_need_insert_data']:
+        data_list = read_standard_bill_data_from_file()
         ssj_data = standard_bill_file_analysis_tool(account_dict, category_dict, data_list)
-        write_ssj_data_to_database(ssj_data_set=ssj_data)
-    if step[3] == 1:
-        if ot_file_name is None:
-            ot_file_name = target_file
-        ot_file = os.path.join(tp_path.parent.parent, 'f_output', ot_file_name)
+        if check_data_legality(ssj_data):
+            write_ssj_data_to_database(ssj_data_set=ssj_data)
+        else:
+            print('数据不合法!!!')
+            raise ValueError('待写入数据不合法!!!')
+
+    if global_constant.step_chain_dict['compress_all_file_to_kbf']:
+        if global_constant.output_kbf_file_name is None:
+            global_constant.output_kbf_file_name = tp_kbf_file_name
+        ot_file = os.path.join(tp_path.parent.parent, 'f_output', global_constant.output_kbf_file_name)
+        # os.path.join(tp_path.parent.parent, 'f_output', output_kbf_file_name)
         compress_file_to_kbf(output_file=ot_file)
-    if step[4] == 1:
-        adb_helper_clear_ssj_data(3)
-    if step[5] == 1:
-        adb_helper_clear_ssj_data(2)
+
+    copy_kbf_to_ssj_backup_dir_after_convert()
     pass
