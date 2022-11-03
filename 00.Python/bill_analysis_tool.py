@@ -650,7 +650,7 @@ def update_input_config_if_android_devices():
                 flag_valid_file = True
                 global_constant.input_kbf_file_name = k
                 print(f'重设输入kbf文件为-->{global_constant.input_kbf_file_name}')
-            elif k.__contains__(now_time_str):
+            elif k.__contains__(now_time_str) or k.startswith('默认账本') or k.startswith('流水核验'):
                 print(f'移除冗余备份文件-->{os.path.join(kbf_abs_dir, k)}')
                 os.remove(os.path.join(kbf_abs_dir, k))
         if not flag_valid_file:
