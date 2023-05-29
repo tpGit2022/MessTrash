@@ -3,11 +3,12 @@
 import base64
 import hashlib
 import os
-from pathlib import Path
-from Crypto.Util.Padding import pad, unpad
+
 from Crypto.Cipher import AES
-from global_constant import tp_path
+from Crypto.Util.Padding import pad, unpad
+
 from global_constant import sdcard_root_path
+from global_constant import tp_path
 
 """"
 加密文件资产脚本，采用AES256的CBC模式进行加密
@@ -15,20 +16,19 @@ from global_constant import sdcard_root_path
 用户提供的密钥会先进行base64编码然后取MD5值32位的
 BLOCK_SIZE固定为16
 FILE_BLOCK_SIZE只要是16的整数倍就行，值太小会加长加解密时间
-pip install pycryptodome
 """
 aes_file_encrypt_key = ''
 decide_list_dict = {
-    'encrypt_data': 1,
+    'encrypt_data': 0,
     'decrypt_data': 1
 }
-initial_vector = ''[0:16]
+initial_vector = 'aes_256_initial_vector'[0:16]
 origin_media_base_dir = None
 encrypt_base_dir = None
 decrypt_base_dir = None
 
 BLOCK_SIZE = 16
-FILE_BLOCK_SIZE = 80
+FILE_BLOCK_SIZE = 1024 * 256
 USER_DEFINE_FILE_HEAD = 60
 MD5_LENGTH = 32
 
@@ -40,7 +40,7 @@ MD5_LENGTH = 32
 
 
 def get_ase_encrypt_key() -> bytes:
-    base64_encode_key = base64.b64encode(aes_file_encrypt_key.encode('UTF-8'))
+    base64_encode_key = base64.standard_b64encode(aes_file_encrypt_key.encode('UTF-8'))
     md5_key = hashlib.md5(base64_encode_key)
     return md5_key.digest()
 
@@ -177,6 +177,8 @@ def compare_file(file_one: str, file_two: str):
 
 if __name__ == '__main__':
     base_dir = tp_path.parent.parent
+    print(f'AES Key:{get_ase_encrypt_key().hex()}')
+    print(f'AES IV :{initial_vector.encode("UTF-8").hex()}')
     if sdcard_root_path is not None:
         base_dir = os.path.join(sdcard_root_path, '00SERVER')
         print(f'当前为Android设备，设置处理路径为{base_dir}')
