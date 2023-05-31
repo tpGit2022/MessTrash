@@ -78,6 +78,8 @@ def convert_alipay_bill_from_csv_to_standard_data_format():
                                 print(f'支付宝重复数据{trade_id}-->{row}')
                             continue
                         standard_data['金额'] = standard_data['金额（元）']
+                        if standard_data['收/支'].__contains__('不计收支'):
+                            standard_data['收/支'] = '其他'
                         standard_data.pop('金额（元）')
                         standard_data.pop('交易来源地')
                         standard_data.pop('类型')
@@ -85,6 +87,10 @@ def convert_alipay_bill_from_csv_to_standard_data_format():
                         standard_data['交易方式'] = '支付宝'
                         if standard_data['资金状态'] is None:
                             standard_data['资金状态'] = ' '
+                        if standard_data['资金状态'].__contains__('收入'):
+                            standard_data['收/支'] = '收入'
+                        if standard_data['资金状态'].__contains__('支出'):
+                            standard_data['收/支'] = '支出'
                         if standard_data['备注'] is None:
                             standard_data['备注'] = ' '
                         standard_data['备注'] = f'{standard_data["备注"]}\n数据来源:支付宝'

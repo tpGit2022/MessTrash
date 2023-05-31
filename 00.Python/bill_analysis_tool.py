@@ -17,6 +17,7 @@ from global_constant import new_unique_id
 from global_constant import ConvertType
 from global_constant import TradeType
 from global_constant import standard_format_data_key
+from comm_tools import get_path_dfs_helper
 from ssj_decide_category import decide_category
 # from online_bill_convert import convert_all_online_bill_data_to_standard
 from online_bill_convert_without_pdf_lib import convert_all_online_bill_data_to_standard
@@ -211,6 +212,8 @@ def standard_bill_file_analysis_tool(account_info_dict, category_info_dict, stan
         if standard_data['交易状态'].__contains__('失败') or standard_data['交易状态'].__contains__('关闭'):
             continue
 
+        if ssj_data_model['createdTime'] == 1681979613000:
+            print('a')
         if standard_data['收/支'].__eq__('收入'):
             need_jump = decide_category(ssj_data_model, account_info_dict, category_info_dict, standard_data,
                                         ssj_data_list)
@@ -432,7 +435,7 @@ def update_database_table_struct(sqlite3_path=None):
 
     # 0 支出 1 收入
     category_need_insert_data_dict = {'福彩': ('0', '休闲娱乐'), '体彩': ('0', '休闲娱乐'), '食材': ('0', '食品酒水'),
-                                      '保险费': ('0', '金融保险'),
+                                      '保险费': ('0', '金融保险'),'投资支出': ('0', '其他杂项'),
                                       '未分类支出': ('0', '其他杂项'), '贷款借入': ('1', '其他收入'), '未分类收入': ('1', '其他收入')}
     for item in category_need_insert_data_dict.items():
         key = item[0]
@@ -577,11 +580,6 @@ def get_phone_ssj_data():
                 ssj_kbf_sqlite_convert(input_file, output_file)
                 write_ssj_data_to_database(output_file)
                 os.system(f"start {unzip_dir}")
-    # convert to normal sqlite database file
-    # del_dir = subprocess.Popen(["cmd.exe", "/c", "dir", "C:\\"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # out,error = del_dir.communicate()
-    # print(out.decode('GBK'))
-
     pass
 
 
@@ -669,8 +667,41 @@ def copy_kbf_to_ssj_backup_dir_after_convert():
     shutil.copyfile(source_kbf_file, des_kbf_dir)
 
 
+def let_weixin_bill_file_ready():
+    """
+    Android设备上解压出来的微信账单还存在一层文件夹 需要提取到f_input下
+    :return:
+    """
+    if global_constant.sdcard_root_path is None:
+        print('非Android设备，不执行微信账单ready操作')
+        return
+    base_dir = os.path.join(tp_path.parent.parent, 'f_input')
+    file_list = os.listdir(base_dir)
+    path_list = []
+    for dir in file_list:
+        if os.path.isfile(os.path.join(base_dir, dir)):
+            continue
+        if dir.startswith('微信支付账单'):
+            get_path_dfs_helper(path_list, os.path.join(base_dir, dir), 0)
+            for f in path_list:
+                if os.path.isdir(f):
+                    get_path_dfs_helper(path_list, f, 1)
+                    continue
+                file_name = f[f.rfind(os.path.sep) + 1:]
+                target_f = os.path.join(base_dir, file_name)
+                print(f'移动文件{f}-->{target_f}')
+                with open(f, 'rb') as f_input:
+                    with open(target_f, 'wb+') as f_output:
+                        f_output.write(f_input.read())
+            shutil.rmtree(os.path.join(base_dir, dir))
+    pass
+
+
 if __name__ == '__main__':
+    let_weixin_bill_file_ready()
     out_dirs = os.path.join(tp_path.parent.parent, 'f_output')
+    if os.path.exists(out_dirs):
+        shutil.rmtree(out_dirs)
     update_input_config_if_android_devices()
     if not os.path.exists(out_dirs):
         os.makedirs(out_dirs)

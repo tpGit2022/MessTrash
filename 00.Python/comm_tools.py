@@ -2,6 +2,7 @@
 # _*_ coding:UTF-8 _*_
 import csv
 import time
+import os
 
 
 def convert_timestamp_to_str(timestamp):
@@ -32,4 +33,21 @@ def write_list_dict_values_to_csv_file(file_path:str, write_mode:str, data_list:
         csv_write = csv.writer(f)
         for row in data_list:
             csv_write.writerow(list(row.values()))
+
+
+def get_path_dfs_helper(path_collect_list: list, input_path: str, deep: int):
+    if not os.path.exists(input_path):
+        print(f'目录不存在:{input_path}')
+        return
+    if deep > 10:
+        return
+    if os.path.isfile(input_path):
+        path_collect_list.append(input_path)
+        return
+    files = os.listdir(input_path)
+    for file in files:
+        f_abs = os.path.join(input_path, file)
+        get_path_dfs_helper(path_collect_list, f_abs, deep + 1)
+    pass
+
 

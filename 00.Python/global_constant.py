@@ -4,7 +4,9 @@ from enum import Enum
 import os
 from pathlib import Path
 
+# input_kbf_file_name = '流水核验_20220929163911_u_nquxyn1_60767968717.kbf'
 input_kbf_file_name = ''
+# output_kbf_file_name = '流水核验_20220929163911_u_nquxyn1_60767968717.kbf'
 output_kbf_file_name = None
 full_update = False
 step_chain_dict = {
