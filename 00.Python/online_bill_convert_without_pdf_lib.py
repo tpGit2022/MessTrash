@@ -9,13 +9,14 @@ from comm_tools import convert_to_timestamp
 from comm_tools import write_list_dict_values_to_csv_file
 from global_constant import ImportDataSource
 from global_constant import origin_bill_dir
+from global_constant import ssj_script_input_base_dir
 from global_constant import standard_format_data_key
 from global_constant import tp_path
 
 """
 本脚本用于辅助处理随手记数据导入，将支付宝，微信，银行账单数据转化为标准账单数据用于随手记数据导入
 基本处理逻辑：
-1.每一个数据来源形成一个单独的原始依据时间升序数据csv文件,同时生成当前数据源新增数据的临时文件
+1. 每一个数据来源形成一个单独的原始依据时间升序数据csv文件,同时生成当前数据源新增数据的临时文件
 2. 所有数据源的临时文件经过去重写入汇总文件
 3. 所有处理完的账单文件转移到origin_bill_data文件夹下
 微信有两种类型账单
@@ -48,7 +49,7 @@ def get_update_dict_set_status(dict_set: dict, key: str, value: str):
 
 
 def convert_alipay_bill_from_csv_to_standard_data_format():
-    input_dir = os.path.join(tp_path.parent.parent, 'f_input/')
+    input_dir = ssj_script_input_base_dir
     files = os.listdir(input_dir)
     standard_alipay_data_list = []
     for f in files:
@@ -70,7 +71,8 @@ def convert_alipay_bill_from_csv_to_standard_data_format():
                         standard_data = dict.fromkeys(standard_format_data_key)
                         column_index = 0
                         while column_index < max(len(data_header), len(standard_format_data_key)):
-                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t', '').strip()
+                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t',
+                                                                                                         '').strip()
                             column_index = column_index + 1
                         trade_id = standard_data['交易号'].replace('\t', '').strip()
                         if get_update_dict_set_status(included_bill_data_dict, ImportDataSource.alipay.value, trade_id):
@@ -117,12 +119,88 @@ def convert_alipay_bill_from_csv_to_standard_data_format():
     tp_alipay_new_bill_data_file = os.path.join(tp_path.parent.parent, 'f_input',
                                                 global_constant.tp_prefix + global_constant.remain_alipay_bill_standard_format_data_file_name)
     print(f'新建支付宝账单新增临时文件{tp_alipay_new_bill_data_file}')
-    write_list_dict_values_to_csv_file(tp_alipay_new_bill_data_file, 'w+', standard_alipay_data_list)
+    write_list_dict_values_to_csv_file(tp_alipay_new_bill_data_file, 'a+', standard_alipay_data_list)
     return standard_alipay_data_list
 
 
+def convert_alipay_apps_bill_from_csv_to_standard_data_format():
+    input_dir = ssj_script_input_base_dir
+    files = os.listdir(input_dir)
+    standard_apps_alipay_data_list = []
+    for f in files:
+        if f.startswith("apps_alipay_record") and f.endswith(".csv"):
+            csv_file_path = os.path.join(input_dir, f)
+            print(f'开始处理-->{csv_file_path}')
+            with open(csv_file_path, 'r', encoding='GBK') as rf:
+                reader = csv.reader(rf)
+                data_read_flag = False
+                for row in reader:
+                    if row is None or len(row) <= 0 or row[0] is None:
+                        continue
+                    # "交易时间	交易分类	交易对方	对方账号	商品说明	收/支	金额	收/付款方式	交易状态	交易订单号	商家订单号	备注"
+                    if row[0].strip().__eq__('交易时间'):
+                        data_read_flag = True
+                        continue
+                    if data_read_flag:
+                        if len(row) < 5:
+                            continue
+                        standard_data = dict.fromkeys(standard_format_data_key)
+                        standard_data['交易号'] = row[9].replace('\t', '').strip()
+                        standard_data['商家订单号'] = row[10].replace('\t', '').strip()
+                        standard_data['交易创建时间'] = row[0].replace('\t', '').strip()
+                        standard_data['付款时间'] = standard_data['交易创建时间']
+                        standard_data['最近修改时间'] = standard_data['交易创建时间']
+                        standard_data['交易对方'] = row[2].replace('\t', '').strip()
+                        standard_data['商品名称'] = row[4].replace('\t', '').strip()
+                        standard_data['金额'] = row[6].replace('\t', '').strip()
+                        standard_data['收/支'] = row[5].replace('\t', '').strip()
+                        if row[5].__contains__('不计收支'):
+                            standard_data['收/支'] = '其他'
+                            standard_data['资金状态'] = '资金转移'
+                        standard_data['交易状态'] = row[8].replace('\t', '').strip()
+                        pay_type = row[7].replace('\t', '').strip()
+                        if pay_type is None or len(pay_type) <= 0:
+                            pay_type = '支付宝'
+                        elif pay_type.__contains__('银行'):
+                            pay_type = '银行卡'
+                        elif pay_type.__contains__('花呗'):
+                            pay_type = '花呗'
+                        elif pay_type.__contains__('余额宝'):
+                            pay_type = '余额宝'
+                        else:
+                            pay_type = '支付宝'
+                        standard_data['交易方式'] = pay_type
+                        standard_data['备注'] = f'{row[11]}\n交易分类:{row[1]}\n对方账户:{row[3]}\n数据来源:支付宝App账单'
+
+                        standard_data['数据来源'] = ImportDataSource.alipay.value
+                        standard_data['时间戳'] = convert_to_timestamp(standard_data['交易创建时间'])
+                        standard_apps_alipay_data_list.append(standard_data)
+            if global_constant.move_origin_data:
+                if os.path.exists(os.path.join(origin_bill_dir, f)):
+                    print(f'该表单已存在同名文件!!!,请手动核验删除{f}')
+                else:
+                    print(f"移动{csv_file_path} --> {origin_bill_dir}")
+                    shutil.move(csv_file_path, origin_bill_dir)
+    if len(standard_apps_alipay_data_list) <= 0:
+        print('支付宝无App导出的账单数据')
+        return
+    print(f'支付宝App账单新增数据{len(standard_apps_alipay_data_list)}')
+    standard_apps_alipay_data_list.sort(key=lambda cmp_data: int(cmp_data['时间戳']))
+    # 追加写入支付宝账单全文件
+    remain_alipay_all_bill_data_file = os.path.join(ssj_script_input_base_dir,
+                                                    global_constant.remain_alipay_bill_standard_format_data_file_name)
+    print(f'追加写入文件{remain_alipay_all_bill_data_file}')
+    write_list_dict_values_to_csv_file(remain_alipay_all_bill_data_file, 'a', standard_apps_alipay_data_list)
+    # 新建临时支付宝账单新增文件
+    tp_alipay_new_bill_data_file = os.path.join(ssj_script_input_base_dir,
+                                                global_constant.tp_prefix + global_constant.remain_alipay_bill_standard_format_data_file_name)
+    print(f'新建支付宝账单新增临时文件{tp_alipay_new_bill_data_file}')
+    write_list_dict_values_to_csv_file(tp_alipay_new_bill_data_file, 'w+', standard_apps_alipay_data_list)
+    return standard_apps_alipay_data_list
+
+
 def convert_weixin_short_bill_from_csv_to_standard_data_format():
-    input_dir = os.path.join(tp_path.parent.parent, 'f_input/')
+    input_dir = ssj_script_input_base_dir
     files = os.listdir(input_dir)
     standard_weixin_short_bill_data_list = []
     for f in files:
@@ -161,7 +239,8 @@ def convert_weixin_short_bill_from_csv_to_standard_data_format():
                         standard_data['商家订单号'] = standard_data['商户单号']
                         standard_data['交易状态'] = '交易成功'
                         if standard_data['收/支'].__contains__('/') or standard_data['交易对方'].__contains__('理财通') or \
-                                standard_data['交易对方'].__contains__('债券') or standard_data['交易对方'].__contains__('基金销售') or standard_data['商品名称'].__contains__('理财通') or \
+                                standard_data['交易对方'].__contains__('债券') or standard_data['交易对方'].__contains__(
+                            '基金销售') or standard_data['商品名称'].__contains__('理财通') or \
                                 standard_data['商品名称'].__contains__('基金销售') or standard_data['商品名称'].__contains__('债券'):
                             standard_data['收/支'] = '其他'
                             standard_data['资金状态'] = '资金转移'
@@ -204,12 +283,12 @@ def convert_weixin_short_bill_from_csv_to_standard_data_format():
     print(f'微信短账单新增数据{len(standard_weixin_short_bill_data_list)}条')
     standard_weixin_short_bill_data_list.sort(key=lambda cmp_data: int(cmp_data['时间戳']))
     # 追加写入微信账单全文件
-    remain_weixin_all_bill_data_file = os.path.join(tp_path.parent.parent, 'f_input',
+    remain_weixin_all_bill_data_file = os.path.join(ssj_script_input_base_dir,
                                                     global_constant.remain_weixin_bill_standard_format_data_file_name)
     print(f'追加写入文件{remain_weixin_all_bill_data_file}')
     write_list_dict_values_to_csv_file(remain_weixin_all_bill_data_file, 'a', standard_weixin_short_bill_data_list)
     # 新建临时微信账单新增文件
-    tp_weixin_new_bill_data_file = os.path.join(tp_path.parent.parent, 'f_input',
+    tp_weixin_new_bill_data_file = os.path.join(ssj_script_input_base_dir,
                                                 global_constant.tp_prefix + global_constant.remain_weixin_bill_standard_format_data_file_name)
     print(f'新建微信账单新增临时文件{tp_weixin_new_bill_data_file}')
     write_list_dict_values_to_csv_file(tp_weixin_new_bill_data_file, 'a+', standard_weixin_short_bill_data_list)
@@ -217,12 +296,12 @@ def convert_weixin_short_bill_from_csv_to_standard_data_format():
 
 
 def convert_sw_salary_from_csv_to_standard_format():
-    input_dir = os.path.join(tp_path.parent.parent, 'f_input/')
+    input_dir = os.path.join(tp_path.parent.parent, 'f_input', 'sw')
     files = os.listdir(input_dir)
     standard_data_list = []
     for f in files:
         if f.__eq__(global_constant.remain_sw_person_all_data_file_name):
-            with open(f'{input_dir}{f}', 'r', encoding='UTF-8') as rf:
+            with open(os.path.join(input_dir, f), 'r', encoding='UTF-8') as rf:
                 reader = csv.reader(rf)
                 data_header = []
                 data_read_flag = False
@@ -235,7 +314,8 @@ def convert_sw_salary_from_csv_to_standard_format():
                         standard_data = dict.fromkeys(standard_format_data_key)
                         column_index = 0
                         while column_index < min(len(data_header), len(standard_format_data_key)):
-                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t', '').strip()
+                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t',
+                                                                                                         '').strip()
                             column_index = column_index + 1
                         standard_data_list.append(standard_data)
     print(f'sw待插入数据{len(standard_data_list)}条')
@@ -244,7 +324,7 @@ def convert_sw_salary_from_csv_to_standard_format():
 
 def load_data_for_remove_duplicate_by_file_name(input_file):
     global included_bill_data_dict
-    file_abs_path = os.path.join(tp_path.parent.parent, 'f_input', input_file)
+    file_abs_path = os.path.join(ssj_script_input_base_dir, input_file)
     if not os.path.exists(file_abs_path):
         print(f'文件不存在,新建文件{file_abs_path}')
         with open(file_abs_path, mode='w', encoding='UTF-8', newline='') as f:
@@ -283,13 +363,14 @@ def collection_all_data_to_csv():
     :return:
     """
     global included_bill_data_dict
-    input_dirs = os.path.join(tp_path.parent.parent, 'f_input/')
+    input_dirs = ssj_script_input_base_dir
     files = os.listdir(input_dirs)
     import_standard_bill_data_list = []
     included_bill_data_dict.clear()
     load_data_for_remove_duplicate_by_file_name(global_constant.all_online_data_to_import_file_name)
     for f in files:
-        if (f.startswith(global_constant.remain_prefix) and f.endswith('.csv')) or f.__eq__(global_constant.remain_sw_person_all_data_file_name):
+        if (f.startswith(global_constant.remain_prefix) and f.endswith('.csv')) or f.__eq__(
+                global_constant.remain_sw_person_all_data_file_name):
             f_abs = os.path.join(input_dirs, f)
             with open(f_abs, mode='r', encoding='UTF-8') as csv_f:
                 csv_reader = csv.reader(csv_f)
@@ -308,11 +389,13 @@ def collection_all_data_to_csv():
                         standard_data = dict.fromkeys(standard_format_data_key)
                         column_index = 0
                         while column_index < min(len(data_header), len(standard_format_data_key)):
-                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t', '').strip()
+                            standard_data[data_header[column_index].strip()] = row[column_index].replace('\t',
+                                                                                                         '').strip()
                             column_index = column_index + 1
                         # 如何剔除微信和支付中支付渠道是银行卡的账单 避免账单的二次导入
                         if data_source.__eq__(ImportDataSource.china_bank.value):
-                            if standard_data['交易对方'].__contains__('支付宝') or standard_data['交易对方'].__contains__('财付通') or standard_data['交易对方'].__contains__('京东商城'):
+                            if standard_data['交易对方'].__contains__('支付宝') or standard_data['交易对方'].__contains__('财付通') or \
+                                    standard_data['交易对方'].__contains__('京东商城'):
                                 continue
                             pass
                         # if data_source.__eq__(ImportDataSource.china_bank)
@@ -322,11 +405,13 @@ def collection_all_data_to_csv():
         return
     print(f"共计新增账单数据{len(import_standard_bill_data_list)}条")
     import_standard_bill_data_list.sort(key=lambda cmp_data: int(cmp_data['时间戳']))
-    import_all_bill_file_name = os.path.join(tp_path.parent.parent, 'f_input', global_constant.all_online_data_to_import_file_name)
+    import_all_bill_file_name = os.path.join(ssj_script_input_base_dir,
+                                             global_constant.all_online_data_to_import_file_name)
     print('追加写入总账单留存文件')
     write_list_dict_values_to_csv_file(import_all_bill_file_name, 'a', import_standard_bill_data_list)
     print('写入总临时新增文件')
-    tp_bank_bill_file = os.path.join(tp_path.parent.parent, 'f_input', global_constant.new_add_online_data_from_all_data_source)
+    tp_bank_bill_file = os.path.join(ssj_script_input_base_dir,
+                                     global_constant.new_add_online_data_from_all_data_source)
     with open(tp_bank_bill_file, mode='w+', encoding='UTF-8', newline='') as cf:
         csv_write = csv.writer(cf)
         csv_write.writerow(standard_format_data_key)
@@ -340,19 +425,95 @@ def init_config():
     need_load_file_name_tuple = (global_constant.remain_weixin_bill_standard_format_data_file_name,
                                  global_constant.remain_alipay_bill_standard_format_data_file_name,
                                  global_constant.remain_china_bank_bill_standard_format_data_file_name,
-                                 global_constant.remain_sw_person_all_data_file_name)
+                                 global_constant.remain_sw_person_all_data_file_name,
+                                 global_constant.remain_pdd_bill_parse_data_file_name)
     for i in need_load_file_name_tuple:
         load_data_for_remove_duplicate_by_file_name(i)
 
 
 def clean_temp_file():
-    input_dirs = os.path.join(tp_path.parent.parent, 'f_input/')
+    input_dirs = ssj_script_input_base_dir
     files = os.listdir(input_dirs)
     for f in files:
         if f.startswith('tp_remain_bill_data') and f.endswith('.csv'):
             f_abs = os.path.join(input_dirs, f)
             print(f'删除临时文件-->{f_abs}')
             os.remove(f_abs)
+
+
+def convert_pdd_order_parse_csv_to_standard():
+    input_dir = os.path.join(tp_path.parent.parent, 'f_input', 'pdd')
+    har_parse_to_pdd_order_list = os.path.join(input_dir, global_constant.har_parse_pdd_order_file)
+    if not os.path.exists(har_parse_to_pdd_order_list):
+        print('不存在拼多多解析账单数据')
+        return
+
+    standard_data_list = []
+    with open(har_parse_to_pdd_order_list, 'r', encoding='UTF-8') as rf:
+        reader = csv.reader(rf)
+        data_read_flag = False
+        data_header = list()
+        for row in reader:
+            if row[0].__eq__('type'):
+                data_read_flag = True
+                data_header.extend(row)
+                continue
+            if data_read_flag:
+                standard_data = dict.fromkeys(standard_format_data_key)
+                standard_data['交易号'] = f'pdd_{row[5]}'
+                standard_data['商家订单号'] = row[6]
+                standard_data['交易创建时间'] = row[19].replace('\t', '').strip()
+                standard_data['付款时间'] = standard_data['交易创建时间']
+                standard_data['最近修改时间'] = standard_data['交易创建时间']
+                standard_data['交易对方'] = row[7]
+                standard_data['商品名称'] = row[8]
+                standard_data['金额'] = row[10]
+                standard_data['收/支'] = '支出'
+                standard_data['交易状态'] = '交易成功'
+                standard_data['交易方式'] = '支付宝'
+                standard_data['资金状态'] = ''
+                standard_data['数据来源'] = ImportDataSource.pdd_parse.value
+                standard_data['时间戳'] = row[16]
+                column_index = 0
+                remark = '拼多多账单解析后导入'
+                while column_index < len(row):
+                    column_index = column_index + 1
+                    if column_index in {2, 3, 4, 5, 6, 11, 13, 16, 17, 18}:
+                        continue
+                    if column_index < len(row) and column_index <= 16:
+                        if column_index == 10:
+                            remark = remark + f"\n实付:{row[column_index]}"
+                        elif column_index == 12:
+                            remark = remark + f"折扣:{row[column_index]}"
+                        elif column_index == 14:
+                            remark = remark + f"显示:{row[column_index]}"
+                        else:
+                            if row[column_index] is not None and len(row[column_index]) > 0:
+                                remark = remark + '\n' + data_header[column_index] + ':' + row[column_index]
+                standard_data['备注'] = remark.strip()
+                trade_id = standard_data['交易号']
+                if get_update_dict_set_status(included_bill_data_dict, ImportDataSource.pdd_parse.value, trade_id):
+                    if global_constant.print_repeat_data_info:
+                        print(f'拼多多解析账单重复数据{trade_id}-->{row}')
+                    continue
+                standard_data_list.append(standard_data)
+
+    if len(standard_data_list) <= 0:
+        print(f'拼多多解析账单无新增数据')
+        return
+    print(f'拼多多解析账单新增数据{len(standard_data_list)}条')
+    standard_data_list.sort(key=lambda cmp_data: int(cmp_data['时间戳']))
+    # 追加写入拼多多解析账单全文件
+    remain_pdd_order_parse_all_bill_data_file = os.path.join(ssj_script_input_base_dir,
+                                                    global_constant.remain_pdd_bill_parse_data_file_name)
+    print(f'追加写入文件{remain_pdd_order_parse_all_bill_data_file}')
+    write_list_dict_values_to_csv_file(remain_pdd_order_parse_all_bill_data_file, 'a', standard_data_list)
+    # 新建临时拼多多解析账单新增文件
+    tp_pdd_parse_new_bill_data_file = os.path.join(ssj_script_input_base_dir,
+                                                global_constant.tp_prefix + global_constant.remain_pdd_bill_parse_data_file_name)
+    print(f'新建拼多多解析账单新增临时文件{tp_pdd_parse_new_bill_data_file}')
+    write_list_dict_values_to_csv_file(tp_pdd_parse_new_bill_data_file, 'a+', standard_data_list)
+    return standard_data_list
 
 
 def convert_all_online_bill_data_to_standard():
@@ -363,10 +524,14 @@ def convert_all_online_bill_data_to_standard():
     convert_weixin_short_bill_from_csv_to_standard_data_format()
 
     print('开始处理支付宝账单.....')
+    convert_alipay_apps_bill_from_csv_to_standard_data_format()
     convert_alipay_bill_from_csv_to_standard_data_format()
 
     print('开始处理私人账单.....')
     convert_sw_salary_from_csv_to_standard_format()
+
+    print('转换抓包的拼多多账单数据为标准账单')
+    convert_pdd_order_parse_csv_to_standard()
 
     print('数据汇总处理.....')
     collection_all_data_to_csv()

@@ -39,7 +39,7 @@ def get_path_dfs_helper(path_collect_list: list, input_path: str, deep: int):
     if not os.path.exists(input_path):
         print(f'目录不存在:{input_path}')
         return
-    if deep > 10:
+    if deep > 10000:
         return
     if os.path.isfile(input_path):
         path_collect_list.append(input_path)
