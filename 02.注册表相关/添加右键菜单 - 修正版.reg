@@ -1,0 +1,462 @@
+Windows Registry Editor Version 5.00
+
+;===============================================================
+;----------------------右键一级菜单定义区域---------------------------------------------------------------
+;----------------------右键一级菜单针对背景右键弹出的菜单SW_Tools-------------------------------------
+;===============================================================
+;针对不选中文件或者文件夹时弹出的菜单选项
+[HKEY_CLASSES_ROOT\Directory\Background\shell\SW_Tools]
+"Icon"="E:\\MyCode\\C++\\00SunWin\\000SWTest\\SwTest\\Win32\\SWtest.exe,0"
+"SubCommands"="Remove_SW_MES;Update_License;Remove_Code_Cache;Create_Standard_OTP_Dir;Update_dll_version;RenameVSProject;UpdateSwOtpDevTemplate;Create_Standard_BOM_OTP_Dir;MergeDirsCSVFiles;ReformatOTPFileName;startDumpBin;UpdateVCPro;extract_txt_from_mul_mes_csv"
+"Position"="-"
+
+;===============================================================
+;----------------------右键一级菜单定义区域---------------------------------------------------------------
+;----------------------右键一级菜单针对背景右键弹出的菜单User_Tools-----------------------------------
+;===============================================================
+[HKEY_CLASSES_ROOT\Directory\Background\shell\User_Tools]
+"Icon"="E:\\MyIT\\MyTools\\MDConvert.exe,0"
+"SubCommands"="Rename_file_name_without_keywords;RenShengWeb;ConnectAndroidPhone;disable_wire_network;enable_wire_network;enable_touchpad;disable_touchpad;phone_pc_transform"
+"Position"="-"
+;===============================================================
+
+;===============================================================
+;----------------------右键一级菜单定义区域---------------------------------------------------------------
+;----------------------右键一级菜单针对背景右键弹出的菜单Code_Tools_Open---------------------------
+;===============================================================
+[HKEY_CLASSES_ROOT\Directory\Background\shell\Code_Tools_Open]
+;"Icon"="C:\\Windows\\System32\\cmd.exe"
+"Icon"="D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.1\\bin\\idea64.exe,0"
+"SubCommands"="IdeaOpenDir;PycharmOpenDir;AndroidStudioOpenDir;VSCodeOpenDir"
+"Position"="-"
+;===============================================================
+
+
+;===============================================================
+;----------------------右键一级菜单定义区域---------------------------------------------------------------
+;----------------------右键一级菜单针对针对单个文件弹出的菜单选项--------------------------------------
+;===============================================================
+
+
+[HKEY_CLASSES_ROOT\*\shell\UserTool]
+"Icon"="E:\\MyIT\\MyTools\\MDConvert.exe,0"
+"MUIVerb"="自制工具箱"
+"SubCommands"="InstallApk;ExecJar;fileHash;push_file_to_android;open_mspaint;ssj_function"
+"Position"="-"
+
+[HKEY_CLASSES_ROOT\*\shell\FileSWTools]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="SW工具箱"
+"SubCommands"="extract_otp_txt_data_to_bin;filter_csv_data;format_mtk_result_txt;convert_setting;reform_sw_log_txt;color_shading_extract;mipi_raw10_unpacked;extract_txt_from_mes_csv;dumpbinHeader;dumpbinDepend;dumpbinExport;realignSQL"
+"Position"="-"
+
+;===============================================================
+;----------------------右键一级菜单定义区域---------------------------------------------------------------
+;----------------------右键一级菜单针对针对文件夹右键菜单，带二级菜单结构-----------------------------
+;===============================================================
+
+[HKEY_CLASSES_ROOT\Directory\shell\SWDirTools]
+"MUIVerb"="SwTools"
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"SubCommands"="zip_dir_with_python_libs"
+"Position"="-"
+
+[HKEY_CLASSES_ROOT\Directory\shell\UserDirTools]
+"MUIVerb"="自制工具箱"
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"SubCommands"="ssj_dir_zip_to_kbf_file"
+"Position"="-"
+
+;**********************************************************************************************************
+;*============================================================**
+;*============================================================**
+;*================= SW_Tools针对背景选项弹出的菜单======================**
+;*============================================================**
+;*============================================================**
+;**********************************************************************************************************
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Remove_SW_MES]
+"Icon"="E:\\MyCode\\C++\\00SunWin\\000SWTest\\SwTest\\Win32\\SWtest.exe,0"
+;"MUIVerb"="移除SWTest软件中的MES配置信息"
+"MUIVerb"="remove_sw_mes"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Remove_SW_MES\command]
+@="cmd.exe /s /k right_menu_remove_mes.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Update_License]
+"Icon"="E:\\MyCode\\C++\\00SunWin\\000SWTest\\SwTest\\Win32\\SWtest.exe,0"
+"MUIVerb"="从本地更新SW的授权文件"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Update_License\command]
+@="cmd.exe /s /k right_menu_update_license.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Remove_Code_Cache]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+;"MUIVerb"="移除VS项目编译生成的临时文件"
+"MUIVerb"="remove_code_cache"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Remove_Code_Cache\command]
+@="cmd.exe /s /k right_menu_remove_code_cache.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Create_Standard_OTP_Dir]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="创建标准的OTP项目文件夹"
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Update_dll_version]
+"Icon"="C:\\Python27\\python.exe,0"
+"MUIVerb"="自动修改当前目录RC文件更新DLL版本信息"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Update_dll_version\command]
+@="cmd.exe /s /k right_menu_update_dll_version.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Create_Standard_OTP_Dir\command]
+@="cmd.exe /s /k right_menu_create_standard_otp_dirs.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\startDumpBin]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="开启VS的DumpBin命令窗口"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\startDumpBin\command]
+@="cmd.exe /s /k right_menu_startdumpbin.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\UpdateVCPro]
+"Icon"="C:\\Program Files (x86)\\Common Files\\Microsoft Shared\\MSEnv\\VSLauncher.exe,0"
+"MUIVerb"="更新当前项目的VS配置文件"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\UpdateVCPro\command]
+@="cmd.exe /s /k right_menu_rename_vs_pro_file.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\RenameVSProject]
+"Icon"="C:\\Program Files (x86)\\Common Files\\Microsoft Shared\\MSEnv\\VSLauncher.exe,0"
+;"MUIVerb"="重命名VS项目"
+"MUIVerb"="rename_vs_project"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\RenameVSProject\command]
+@="cmd.exe /s /k right_menu_rename_vs_project.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\UpdateSwOtpDevTemplate]
+"Icon"="E:\\MyCode\\C++\\00SunWin\\000SWTest\\SwTest\\Win32\\SWtest.exe,0"
+"MUIVerb"="配置导出的SWOTP开发模板"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\UpdateSwOtpDevTemplate\command]
+@="cmd.exe /s /k right_menu_update_sw_otp_dev_template.bat \"%V\""
+
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Create_Standard_BOM_OTP_Dir]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="创建BOM标准文件夹"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Create_Standard_BOM_OTP_Dir\command]
+@="cmd.exe /s /k right_menu_create_bom_standard_otp_dirs.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\MergeDirsCSVFiles]
+"Icon"="D:\\Program Files (x86)\\Kingsoft\\WPS Office\\11.8.6.10973\\office6\\et.exe,0"
+;"MUIVerb"="合并当前目录及子文件夹下所有CSV文件"
+"MUIVerb"="merge_csv_dirs"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\MergeDirsCSVFiles\command]
+@="cmd.exe /s /k right_menu_merge_csv_data.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ReformatOTPFileName]
+"Icon"="C:\\Python27\\python.exe,0"
+"MUIVerb"="移除OTPTXT文件名的时间戳多余参数"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ReformatOTPFileName\command]
+@="cmd.exe /s /k right_menu_reformat_otp_filename.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\extract_txt_from_mul_mes_csv]
+"Icon"="D:\\Program Files (x86)\\Kingsoft\\WPS Office\\11.8.6.10973\\office6\\et.exe,0"
+;"MUIVerb"="合并当前目录及子文件夹下所有CSV文件"
+"MUIVerb"="从MES的CSV中抽取TXT数据"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\extract_txt_from_mul_mes_csv\command]
+@="cmd.exe /s /k right_menu_extract_txt_from_mes_csv_dir.bat \"%V\""
+
+;===========================================================================
+;====================Dumpbin的命令合集===========================================
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\dumpbinHeader]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="查看DLL+LIB+OBJ是x86_x64"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\dumpbinHeader\command]
+@="cmd.exe /s /k right_menu_dumpbin_tool.bat \"%V\" 1"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\dumpbinDepend]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="查看DLL+LIB+OBJ的依赖"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\dumpbinDepend\command]
+@="cmd.exe /s /k right_menu_dumpbin_tool.bat \"%V\" 2"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\dumpbinExport]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="查看DLL+LIB+OBJ的接口"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\dumpbinExport\command]
+@="cmd.exe /s /k right_menu_dumpbin_tool.bat \"%V\" 3"
+
+;**********************************************************************************************************
+;*============================================================**
+;*============================================================**
+;*================= Code_Tools_Open针对背景选项弹出的菜单======================**
+;*============================================================**
+;*============================================================**
+;**********************************************************************************************************
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\IdeaOpenDir]
+"Icon"="D:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.1\\bin\\idea64.exe,0"
+"MUIVerb"="通过JetBrains IDEA打开"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\IdeaOpenDir\command]
+@="cmd.exe /s /c right_menu_open_in_jetbrains_idea.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\PycharmOpenDir]
+"Icon"="D:\\Program Files\\JetBrains\\PyCharm 2026.1.3\\bin\\pycharm64.exe,0"
+"MUIVerb"="通过JetBrains Pycharm打开"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\PycharmOpenDir\command]
+@="cmd.exe /s /c right_menu_open_in_jetbrains_pycharm.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\AndroidStudioOpenDir]
+"Icon"="D:\\Program Files\\Android\\Android Studio\\bin\\studio64.exe,0"
+"MUIVerb"="通过Android Studio打开"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\AndroidStudioOpenDir\command]
+@="cmd.exe /s /c right_menu_open_in_android_studio.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\VSCodeOpenDir]
+"Icon"="D:\\Programs\\Microsoft VS Code\\Code.exe,0"
+"MUIVerb"="通过VSCode打开"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\VSCodeOpenDir\command]
+@="cmd.exe /s /c right_menu_open_in_vscode.bat \"%V\""
+
+;===========================================================================
+;===================单文件的右键菜单命令合集===========================================
+;============================================================
+;============================================================
+;=================UserTool针对单个文件弹出的菜单的二级子项======================
+;============================================================
+;============================================================
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\InstallApk]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="APK批量安装"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\InstallApk\command]
+@="cmd.exe /s /k installorexec.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ExecJar]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ExecJar\command]
+@="cmd.exe /s /k installorexec.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\fileHash]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="获取文件哈希值"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\fileHash\command]
+@="cmd.exe /s /k checkHash.bat \"%V\""
+
+;============================================================
+;============================================================
+;=================FileSWTools针对单个文件弹出的菜单的二级子项======================
+;============================================================
+;============================================================
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\realignSQL]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="重新排布SQL顺序"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\realignSQL\command]
+@="cmd.exe /s /k right_menu_realign_sql_file.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\extract_otp_txt_data_to_bin]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="OTP的txt转bin文件"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\extract_otp_txt_data_to_bin\command]
+@="cmd.exe /s /k right_menu_extract_txt_data_to_bin.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\filter_csv_data]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="筛选CSV的特定数据"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\filter_csv_data\command]
+@="cmd.exe /s /k right_menu_filter_csv_data.bat \"%V\""
+
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\format_mtk_result_txt]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="格式化MTK的result.txt文件"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\format_mtk_result_txt\command]
+@="cmd.exe /s /k right_menu_format_mtk_result_txt.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\convert_setting\command]
+@="cmd.exe /s /k right_menu_convert_settings.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\convert_setting]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="三赢兴，度信，三星setting转换"
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\reform_sw_log_txt\command]
+@="cmd.exe /s /k right_menu_reform_sw_txt_log.bat \"%V\""
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\reform_sw_log_txt]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="格式化Sw的TxtLog"
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\color_shading_extract\command]
+@="cmd.exe /s /k right_menu_extract_color_shading_data.bat \"%V\""
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\color_shading_extract]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="提取ColorShading数据"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\push_file_to_android\command]
+@="cmd.exe /s /k right_menu_push_file.bat \"%V\""
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\push_file_to_android]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="推送单文件到手机"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\open_mspaint\command]
+@="cmd.exe /s /k mspaint \"%V\""
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\open_mspaint]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="微软画板"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\mipi_raw10_unpacked\command]
+@="cmd.exe /s /k right_menu_unpack_mipi_raw10.bat \"%V\""
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\mipi_raw10_unpacked]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="MIPI_RAW解码"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\extract_txt_from_mes_csv\command]
+@="cmd.exe /s /k right_menu_extract_txt_from_mes_csv_files.bat \"%V\""
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\extract_txt_from_mes_csv]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="从单个MES_CSV提取TXT数据"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ssj_function]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="随手记功能"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ssj_function\command]
+@="cmd.exe /s /c right_menu_ssj_function.bat \"%V\""
+
+;============================================================
+;============================================================
+;=================UserTool针对背景右键弹出的菜单二级子项定义======================
+;============================================================
+;============================================================
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Rename_file_name_without_keywords]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="重命名文件并移除关键字"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Rename_file_name_without_keywords\command]
+@="cmd.exe /s /k right_menu_rename_file_name_without_keyword.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\RenShengWeb]
+"Icon"="E:\\MyIT\\MyTools\\MDConvert.exe,0"
+"MUIVerb"="人升Web开启"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\RenShengWeb\command]
+@="cmd.exe /s /k right_menu_rensheng_feel_web.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ConnectAndroidPhone]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+"MUIVerb"="远程手机"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ConnectAndroidPhone\command]
+@="cmd.exe /s /k right_menu_androidremote.bat \"%V\""
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\disable_wire_network]
+"Icon"="C:\\Python27\\python.exe,0"
+"MUIVerb"="禁用有线网卡"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\disable_wire_network\command]
+@="cmd.exe /s /k right_menu_disable_wire_network.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\enable_wire_network]
+"Icon"="C:\\Python27\\python.exe,0"
+"MUIVerb"="启用有线网卡"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\enable_wire_network\command]
+@="cmd.exe /s /k right_menu_enable_wire_network.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\enable_touchpad]
+"Icon"="D:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\VC\\SecurityIssueAnalysis\\python\\pythonw.exe,0"
+"MUIVerb"="启用触摸板"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\enable_touchpad\command]
+@="cmd.exe /s /k right_menu_enable_touchpad.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\disable_touchpad]
+"Icon"="C:\\Python27\\python.exe,0"
+"MUIVerb"="禁用触摸板"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\disable_touchpad\command]
+@="cmd.exe /s /k right_menu_disable_touchpad.bat \"%V\""
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\phone_pc_transform]
+"Icon"="D:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\VC\\SecurityIssueAnalysis\\python\\pythonw.exe,0"
+"MUIVerb"="手电数据互传"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\phone_pc_transform\command]
+@="cmd.exe /s /c right_menu_android_phone_pc_transform.bat \"%V\""
+
+
+
+
+;============================================================
+;============================================================
+;=================UserTool针对单个文件夹弹出的菜单的二级子项===============
+;============================================================
+;============================================================
+
+; ---------- 子菜单：zip_dir_with_python_libs ----------
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\zip_dir_with_python_libs]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+@="利用Python库打包文件夹"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\zip_dir_with_python_libs\command]
+@="cmd.exe /s /k right_menu_zip_dirs_with_python_libs.bat \"%V\""
+
+;--------子菜单 ssj_dir_zip_to_kbf_file ------------------------------------
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ssj_dir_zip_to_kbf_file]
+"Icon"="C:\\Windows\\System32\\cmd.exe"
+@="随手记-打包文件夹为KBF文件"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\ssj_dir_zip_to_kbf_file\command]
+@="cmd.exe /s /k right_menu_ssj_zip_dirs_to_kbf_file.bat \"%V\""
+
+
+;============================================================
+;============================================================
+;=================Dumpbin命令针对DLL，LIB等进行查看依赖，函数接口等功能======
+;============================================================
+;============================================================
+; ===== 主菜单（DLL）=====
+
+; ==========================================
+; Dumpbin右键菜单 - 全文件类型支持
+; 文件类型：DLL / EXE / LIB / OBJ
+; 二级菜单：查看头部 / 查看依赖 / 查看导出
+; 脚本直接调用 right_menu_dumpbin_tool.bat
+; ==========================================
+
